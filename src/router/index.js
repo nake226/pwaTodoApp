@@ -13,7 +13,7 @@ let router = new Router({
   routes: [
     // ログイン画面
     {
-      path: '/login',
+      path: '/pwaTodoApp',
       name: 'Login',
       component: Login
     },
