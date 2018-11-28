@@ -11,16 +11,6 @@ let router = new Router({
   // History Mode
   mode: 'history',
   routes: [
-    // ログイン画面へリダイレクト
-    {
-      path: '*',
-      redirect: '/login'
-    },
-    // ルートもログイン画面へリダイレクト
-    {
-      path: '/',
-      redirect: '/login'
-    },
     // ログイン画面
     {
       path: '/login',
@@ -41,7 +31,17 @@ let router = new Router({
       meta: {
         requiresAuth: true
       }
-    }
+    },
+    // // ログイン画面へリダイレクト
+    // {
+    //   path: '*',
+    //   redirect: '/sign-up'
+    // },
+    // // ルートもログイン画面へリダイレクト
+    // {
+    //   path: '/',
+    //   redirect: '/sign-up'
+    // },
   ]
 })
 
@@ -49,7 +49,7 @@ router.beforeEach((to, from, next) => {
   let currentUser = firebase.auth().currentUser;
   let requiresAuth = to.matched.some(record => record.meta.requiresAuth);
 
-  if(requiresAuth && !currentUser) next('login')
+  if(requiresAuth && !currentUser) next('sign-up')
   else if(!requiresAuth && currentUser) next('hello')
   else next()
 })

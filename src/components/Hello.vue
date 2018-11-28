@@ -1,26 +1,20 @@
 <template>
-  <div id="todo" class="container">
-    <h1 class="appName">
-      Todo リスト
-      <span class="numOfTask">（{{ remaining.length }}/{{ todos.length }}）</span>
-    </h1>
-    <ul>
-      <li class="txt txt-alert" v-show="!todos.length">Nothing to do!!</li>
-      <li v-for="(todo, index) in todos">
-        <label>
-          <input type="checkbox" v-model="todo.is_done"><span class="checkbox"></span>
-        </label>
-        <span :class="{done: todo.is_done}">{{ todo.name }}</span>
-        <span @click="deleteTask(index)" class="btn-delete">[×]</span>
-      </li>
-    </ul>
-    <form @submit.prevent="addTask">
-      <input class="txt" type="text" v-model="task">
-    </form>
-    <div class="btn_block">
-      <button class="btn btn-add" @click="addTask">Todoを追加する</button>
-      <button class="btn btn-purge" @click="purge">完了したTodoを一斉削除</button>
+  <div id="todo">
+    <button type="submit" v-on:click="logout">ログアウト</button>
+    <h2>タスク</h2>
+    <div>
+      <input type="text" v-model="newTodoName">
+      <button type="submit" v-on:click="createTodo()">タスク作成</button>
     </div>
+    <ul>
+      <li><button type="submit" v-on:click="showTodoType = 'all'">すべて</button></li>
+      <li><button type="submit" v-on:click="showTodoType = 'active'">未完タスク一覧</button></li>
+      <li><button type="submit" v-on:click="showTodoType = 'complete'">完了タスク一覧</button></li>
+    </ul>
+    <ul v-for="(todo, key) in filteredTodos">
+      <li><input class="toggle" type="checkbox" v-model="todo.isComplete" v-on:click="updateIsCompleteTodo(todo, key)">{{ todo.name }}</li>
+      <button type="submit" v-on:click="deleteTodo(key)">削除</button>
+    </ul>
   </div>
 </template>
 
@@ -28,67 +22,64 @@
 import firebase from 'firebase'
 
 export default {
-  name: 'hello',
-  data() {
-    return {
-      name: "",
-      task: "",
-      todos: [],
-    }
+  name: 'todo',
+  created: function() {
+    var userId = firebase.auth().currentUser.uid;
+    this.database = firebase.database();
+    this.todosRef = this.database.ref('todos/' + userId);
+
+    var _this = this;
+    this.todosRef.on('value', function(snapshot) {
+      _this.todos = snapshot.val(); // データに変化が起きたときに再取得する
+    });
   },
-  // 監視
-  watch: {
-    /**
-     * @name todos
-     * タスクの内部（プロパティ / 値）も監視する
-     */
-    todos: {
-      handler: function(){
-        localStorage.setItem('todos', JSON.stringify(this.todos));
-      },
-      deep: true
-    }
-  },
-  // データがマウントされた直後
-  mounted: function(){
-    this.todos = JSON.parse(localStorage.getItem('todos')) || [];
-  },
-  // 関数
-  methods: {
-    // タスク追加
-    addTask(){
-      var newTask = {
-        name: this.task,
-        is_done: false
-      }
-      if (this.task.length !== 0) {
-        this.todos.push(newTask); 
-      }
-      // todoの追加後に入力欄を空にする
-      this.task = "";
-    },
-    // タスク削除
-    deleteTask(index){
-      this.todos.splice(index, 1);
-    },
-    // 処理済みタスクの削除
-    purge(){
-      if(!confirm('delete finished task?')){
-        return;
-      }
-      this.todos = this.remaining;
-    }
-  },
-  // 算出プロパティ
   computed: {
-    /**
-     * @name remaining
-     * @returns 残りのタスク
-     */
-    remaining: function(){
-      return this.todos.filter(function(todo){
-        return !todo.is_done;
-      });
+    filteredTodos: function () {
+      if (this.showTodoType == 'all') {
+        return this.todos;
+      } else {
+        var showIsComplete = false;
+        if (this.showTodoType == 'complete') { showIsComplete = true }
+        var filterTodos = {};
+        for (var key in this.todos) {
+          var todo = this.todos[key];
+          if (todo.isComplete == showIsComplete) { filterTodos[key] = todo; }
+        }
+        return filterTodos;
+      }
+    }
+  },
+  methods: {
+    createTodo: function() {
+      if (this.newTodoName == "") { return; }
+      this.todosRef.push({
+        name: this.newTodoName,
+        isComplete: false,
+      })
+      this.newTodoName = "";
+    },
+    updateIsCompleteTodo: function (todo, key) {
+      todo.isComplete = !todo.isComplete
+      var updates = {};
+      updates['/todos/' + key] = todo;
+      this.database.ref().update(updates);
+    },
+    deleteTodo: function (key) {
+      this.database.ref('todos').child(key).remove();
+    },
+    logout: function() {
+      firebase.auth().signOut().then(() => {
+        this.$router.replace('login')
+      })
+    }
+  },
+  data () {
+    return {
+      database: null,
+      todosRef: null,
+      newTodoName: '',
+      showTodoType: 'all',
+      todos: []
     }
   }
 }
@@ -99,7 +90,6 @@ export default {
 body {
   font-size: 16px;
   font-family: Verdana, sans-serif;
-  margin: 5% auto 0;
 }
 .container {
   box-sizing: border-box;
