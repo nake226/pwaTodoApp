@@ -1,30 +1,94 @@
 <template>
-  <div class="hello">
-    <h1>{{ msg }}</h1>
-    <h2>Essential Links</h2>
+  <div id="todo" class="container">
+    <h1 class="appName">
+      Todo リスト
+      <span class="numOfTask">（{{ remaining.length }}/{{ todos.length }}）</span>
+    </h1>
     <ul>
-      <li><a href="https://vuejs.org" target="_blank" rel="noopener">Core Docs</a></li>
-      <li><a href="https://forum.vuejs.org" target="_blank" rel="noopener">Forum</a></li>
-      <li><a href="http://chat.vuejs.org/" target="_blank" rel="noopener">Vue Community Chat</a></li>
-      <li><a href="https://twitter.com/vuejs" target="_blank" rel="noopener">Twitter</a></li>
-      <li><a href="http://vuejs-templates.github.io/webpack/" target="_blank" rel="noopener">Docs for This Template</a></li>
+      <li class="txt txt-alert" v-show="!todos.length">Nothing to do!!</li>
+      <li v-for="(todo, index) in todos">
+        <label>
+          <input type="checkbox" v-model="todo.is_done"><span class="checkbox"></span>
+        </label>
+        <span :class="{done: todo.is_done}">{{ todo.name }}</span>
+        <span @click="deleteTask(index)" class="btn-delete">[×]</span>
+      </li>
     </ul>
-    <h2>Ecosystem</h2>
-    <ul>
-      <li><a href="http://router.vuejs.org/" target="_blank" rel="noopener">vue-router</a></li>
-      <li><a href="http://vuex.vuejs.org/" target="_blank" rel="noopener">vuex</a></li>
-      <li><a href="http://vue-loader.vuejs.org/" target="_blank" rel="noopener">vue-loader</a></li>
-      <li><a href="https://github.com/vuejs/awesome-vue" target="_blank" rel="noopener">awesome-vue</a></li>
-    </ul>
+    <form @submit.prevent="addTask">
+      <input class="txt" type="text" v-model="task">
+    </form>
+    <div class="btn_block">
+      <button class="btn btn-add" @click="addTask">Todoを追加する</button>
+      <button class="btn btn-purge" @click="purge">完了したTodoを一斉削除</button>
+    </div>
   </div>
 </template>
 
 <script>
+import firebase from 'firebase'
+
 export default {
   name: 'hello',
-  data () {
+  data() {
     return {
-      msg: 'Welcome to Your Vue.js PWA'
+      name: "",
+      task: "",
+      todos: [],
+    }
+  },
+  // 監視
+  watch: {
+    /**
+     * @name todos
+     * タスクの内部（プロパティ / 値）も監視する
+     */
+    todos: {
+      handler: function(){
+        localStorage.setItem('todos', JSON.stringify(this.todos));
+      },
+      deep: true
+    }
+  },
+  // データがマウントされた直後
+  mounted: function(){
+    this.todos = JSON.parse(localStorage.getItem('todos')) || [];
+  },
+  // 関数
+  methods: {
+    // タスク追加
+    addTask(){
+      var newTask = {
+        name: this.task,
+        is_done: false
+      }
+      if (this.task.length !== 0) {
+        this.todos.push(newTask); 
+      }
+      // todoの追加後に入力欄を空にする
+      this.task = "";
+    },
+    // タスク削除
+    deleteTask(index){
+      this.todos.splice(index, 1);
+    },
+    // 処理済みタスクの削除
+    purge(){
+      if(!confirm('delete finished task?')){
+        return;
+      }
+      this.todos = this.remaining;
+    }
+  },
+  // 算出プロパティ
+  computed: {
+    /**
+     * @name remaining
+     * @returns 残りのタスク
+     */
+    remaining: function(){
+      return this.todos.filter(function(todo){
+        return !todo.is_done;
+      });
     }
   }
 }
@@ -32,21 +96,131 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style>
-h1, h2 {
-  font-weight: normal;
+body {
+  font-size: 16px;
+  font-family: Verdana, sans-serif;
+  margin: 5% auto 0;
 }
-
-ul {
-  list-style-type: none;
+.container {
+  box-sizing: border-box;
+  margin: auto;
+  padding: 0 7.25%;
+  width: 100%;
+}
+#todo h1 {
+  border-bottom: 1px solid #ddd;
+  font-size: 22px;
+  margin: 0 auto;
+  padding: 0 0 18px;
+  text-align: center;
+}
+#todo h1 > button {
+  float: right;
+}
+#todo #name {
+  margin-bottom: 30px;
+}
+#todo .numOfTask {
+  color: #bbb;
+  font-size: 12px;
+}
+#todo ul {
+  margin: 18px auto 0;
   padding: 0;
+  list-style: none;
 }
-
-li {
+#todo li {
+  line-height: 2.5;
+}
+#todo li > span.done {
+  text-decoration: line-through;
+  color: #bbb;
+}
+#todo form {
+  margin: 18px auto 0;
+}
+#todo input[type="text"] {
+  border: solid 2px #777;
+  border-radius: 3px;
+  font-size: 16px;
+  height: 25px;
+  width: 60%;
+  padding: 5px 8px 6px;
+}
+#todo input[type="checkbox"] {
+  -appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+#todo input[type="checkbox"] + span {
+  padding: 0 30px 0 0;
+  position: relative;
+}
+#todo label {
+  position: relative;
+}
+#todo input[type="checkbox"] + span::before {
+  background: transparent;
+  border: 2px #616161 solid;
+  border-radius: 3px;
+  content: "";
   display: inline-block;
-  margin: 0 10px;
+  height: 15px;
+  width: 15px;
+  position: absolute;
+  top: 2px;
+  bottom: 0;
+  margin: auto;
 }
-
-a {
-  color: #35495E;
+#todo input[type="checkbox"]:checked + span::before {
+  background: #616161;
+}
+#todo input[type="checkbox"]:checked + span::after {
+  border: 2px solid #fff;
+  border-width: 0 2px 2px 0;
+  content: "";
+  display: inline-block;
+  -webkit-transform: rotate(45deg);
+  -ms-transform: rotate(45deg);
+  transform: rotate(45deg);
+  position: absolute;
+  top: 4px;
+  height: 9px;
+  width: 4px;
+  left: 7px;
+}
+#todo .btn_block {
+  margin: 25px auto 0;
+}
+#todo .txt {
+  margin: auto;
+}
+#todo .txt-alert {
+  font-size: 17px;
+}
+#todo .btn {
+  background: #ffffff;
+  display: inline-block;
+  padding: 8px 8px 7px;
+  text-decoration: none;
+  border-radius: 3px;
+  font-size: 14px;
+}
+#todo .btn-delete {
+  font-size: 13px;
+  cursor: pointer;
+  color: #08c;
+}
+#todo .btn-purge {
+  color: #EB8686;
+  border: double 2px #EB8686;
+}
+#todo .btn-add {
+  color: #08c;
+  border: double 2px #08c;
+  margin-right: 10px;
 }
 </style>
